@@ -1,3 +1,7 @@
 *
 
 !/.gitignore
+
+!/tools
+!/tools/samplefs
+!/tools/samplefs/nvubuntu-jammy-lfs-aarch64-packages
