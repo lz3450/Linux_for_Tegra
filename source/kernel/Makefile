@@ -7,6 +7,7 @@ KERNEL_DEF_CONFIG ?= defconfig
 MAKEFILE_DIR := $(abspath $(shell dirname $(lastword $(MAKEFILE_LIST))))
 kernel_source_dir := $(MAKEFILE_DIR)/$(KERNEL_SRC_DIR)
 
+KERNEL_OUTPUT := $(kernel_source_dir)/kernel-out
 ifdef KERNEL_OUTPUT
 O_OPT := O=$(KERNEL_OUTPUT)
 $(mkdir -p $(KERNEL_OUTPUT))
@@ -32,6 +33,16 @@ kernel:
 		-C $(kernel_source_dir) $(O_OPT) \
 		LOCALVERSION=$(LOCALVERSION) \
 		$(KERNEL_DEF_CONFIG)
+
+	cp -v $(KERNEL_OUTPUT)/.config $(MAKEFILE_DIR)/defconfig.config
+
+	$(MAKE) \
+		ARCH=arm64 \
+		-C $(kernel_source_dir) $(O_OPT) \
+		LOCALVERSION=$(LOCALVERSION) \
+		nconfig
+
+	cp -v $(KERNEL_OUTPUT)/.config $(MAKEFILE_DIR)/.config
 
 	$(MAKE) -j $(NPROC) \
 		ARCH=arm64 \
