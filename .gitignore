@@ -9,3 +9,7 @@
 !/source
 !/source/kernel
 !/source/kernel/Makefile
+
+!/nv_tools/
+!/nv_tools/scripts
+!/nv_tools/scripts/nv_customize_rootfs.sh
