@@ -154,10 +154,10 @@ ENDOFHERE
 			"${LDK_ROOTFS_DIR}/etc/adduser.conf"
 	fi
 
-	if [ -e "${LDK_ROOTFS_DIR}/etc/gdm3/custom.conf" ]; then
-		sed -i "/WaylandEnable=false/ s/^#//" \
-			"${LDK_ROOTFS_DIR}/etc/gdm3/custom.conf"
-	fi
+	# if [ -e "${LDK_ROOTFS_DIR}/etc/gdm3/custom.conf" ]; then
+	# 	sed -i "/WaylandEnable=false/ s/^#//" \
+	# 		"${LDK_ROOTFS_DIR}/etc/gdm3/custom.conf"
+	# fi
 
 	# Disable unattended upgrade
 	if [ -e "${LDK_ROOTFS_DIR}/etc/apt/apt.conf.d/20auto-upgrades" ]; then
