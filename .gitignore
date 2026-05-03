@@ -13,6 +13,11 @@
 !/source
 !/source/kernel
 !/source/kernel/Makefile
+!/source/kernel/kernel-jammy-src/
+!/source/kernel/kernel-jammy-src/drivers
+!/source/kernel/kernel-jammy-src/drivers/gpu
+!/source/kernel/kernel-jammy-src/drivers/gpu/drm
+!/source/kernel/kernel-jammy-src/drivers/gpu/drm/drm_edid_load.c
 !/source/nvdisplay
 !/source/nvdisplay/kernel-open
 !/source/nvdisplay/kernel-open/nvidia-drm
