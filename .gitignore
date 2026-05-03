@@ -17,3 +17,8 @@
 !/source/nvdisplay/kernel-open
 !/source/nvdisplay/kernel-open/nvidia-drm
 !/source/nvdisplay/kernel-open/nvidia-drm/nvidia-drm-connector.c
+!/source/nvdisplay/src
+!/source/nvdisplay/src/common
+!/source/nvdisplay/src/common/displayport
+!/source/nvdisplay/src/common/displayport/src
+!/source/nvdisplay/src/common/displayport/src/dp_edid.cpp
