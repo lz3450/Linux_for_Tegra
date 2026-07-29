@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SPDX-FileCopyrightText: Copyright (c) 2020-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2020-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
 #
 # Redistribution and use in source and binary forms, with or without
@@ -77,17 +77,11 @@ function nv_customize_rootfs {
 		popd > /dev/null
 	fi
 
-	if [ -e "${LDK_ROOTFS_DIR}/usr/share/lightdm/lightdm.conf.d/50-ubuntu.conf" ] ; then
-		grep -q -F 'allow-guest=false' \
-			"${LDK_ROOTFS_DIR}/usr/share/lightdm/lightdm.conf.d/50-ubuntu.conf" \
-			|| echo 'allow-guest=false' \
-			>> "${LDK_ROOTFS_DIR}/usr/share/lightdm/lightdm.conf.d/50-ubuntu.conf"
-	fi
-
 	# Disabling NetworkManager-wait-online.service for Bug 200290321
 	echo "Disabling NetworkManager-wait-online.service"
 	if [ -h "${LDK_ROOTFS_DIR}/etc/systemd/system/network-online.target.wants/NetworkManager-wait-online.service" ]; then
 		rm "${LDK_ROOTFS_DIR}/etc/systemd/system/network-online.target.wants/NetworkManager-wait-online.service"
+		ln -sf "/dev/null" "${LDK_ROOTFS_DIR}/etc/systemd/system/NetworkManager-wait-online.service"
 	fi
 
 	echo "Disable the ondemand service by changing the runlevels to 'K'"
@@ -104,7 +98,7 @@ function nv_customize_rootfs {
 
 	# Don't create default user via cloud-init
 	if [ -e "${LDK_ROOTFS_DIR}/etc/cloud/cloud.cfg" ]; then
-		sed -i -e "s/^users:$/#users:/" -e "s/^   - default$/#   - default/" \
+		sed -i -e "/users:/s/^/#/" -e "/- default/s/^/#/" \
 			"${LDK_ROOTFS_DIR}/etc/cloud/cloud.cfg"
 	fi
 
@@ -124,16 +118,14 @@ ENDOFHERE
 			"${LDK_ROOTFS_DIR}/etc/cloud/cloud.cfg.d/99-disable-cloudinit-network.cfg"
 	fi
 
-	# If default target does not exist and if rootfs contains gdm, set default to nv-oem-config target
+	# If default target does not exist and if rootfs contains gdm, set default to nv-oobe target
 	if [ ! -e "${LDK_ROOTFS_DIR}/etc/systemd/system/default.target" ] && \
 	   [ -d "${LDK_ROOTFS_DIR}/etc/gdm3/" ]; then
-		mkdir -p "${LDK_ROOTFS_DIR}/etc/systemd/system/nv-oem-config.target.wants"
-		pushd "${LDK_ROOTFS_DIR}/etc/systemd/system/nv-oem-config.target.wants" \
+		mkdir -p "${LDK_ROOTFS_DIR}/etc/systemd/system/nv-oobe.target.wants"
+		pushd "${LDK_ROOTFS_DIR}/etc/systemd/system/nv-oobe.target.wants" \
 			> /dev/null 2>&1
-		ln -sf "/lib/systemd/system/nv-oem-config.service" \
-			"nv-oem-config.service"
-		ln -sf "/etc/systemd/system/nvfb-early.service" \
-			"nvfb-early.service"
+		ln -sf "/lib/systemd/system/nv-oobe.service" \
+			"nv-oobe.service"
 		ln -sf "/etc/systemd/system/nvpower.service" \
 			"nvpower.service"
 		ln -sf "/etc/systemd/system/nvfancontrol.service" \
@@ -142,12 +134,12 @@ ENDOFHERE
 			"nvpmodel.service"
 		popd > /dev/null 2>&1
 		pushd "${LDK_ROOTFS_DIR}/etc/systemd/system" > /dev/null 2>&1
-		ln -sf /lib/systemd/system/nv-oem-config.target \
-			nv-oem-config.target
-		ln -sf nv-oem-config.target default.target
+		ln -sf /lib/systemd/system/nv-oobe.target \
+			nv-oobe.target
+		ln -sf nv-oobe.target default.target
 		popd > /dev/null 2>&1
 
-		extra_groups="EXTRA_GROUPS=\"audio gdm gpio i2c lightdm render video weston-launch\""
+		extra_groups="EXTRA_GROUPS=\"audio gdm gpio i2c render video weston-launch\""
 		sed -i "/\<EXTRA_GROUPS\>=/ s/^.*/${extra_groups}/" \
 			"${LDK_ROOTFS_DIR}/etc/adduser.conf"
 		sed -i "/\<ADD_EXTRA_GROUPS\>=/ s/^.*/ADD_EXTRA_GROUPS=1/" \
@@ -174,24 +166,6 @@ ENDOFHERE
 			"${LDK_ROOTFS_DIR}/etc/update-manager/release-upgrades"
 	fi
 
-	# Set LXDE as default LightDM user session
-	if [ -e "${LDK_ROOTFS_DIR}/etc/lightdm/lightdm.conf.d/50-nvidia.conf" ] && \
-		[ -e "${LDK_ROOTFS_DIR}/usr/share/xsessions/ux-LXDE.desktop" ]; then
-		grep -q -F 'user-session=ux-LXDE' \
-			"${LDK_ROOTFS_DIR}/etc/lightdm/lightdm.conf.d/50-nvidia.conf" \
-			|| sed -i '1 auser-session=ux-LXDE' \
-			"${LDK_ROOTFS_DIR}/etc/lightdm/lightdm.conf.d/50-nvidia.conf"
-	fi
-
-	# Set lightdm-gtk-greeter as default login greeter for LightDM
-	if [ -e "${LDK_ROOTFS_DIR}/etc/lightdm/lightdm.conf.d/50-nvidia.conf" ] && \
-		[ -e "${LDK_ROOTFS_DIR}/usr/sbin/lightdm-gtk-greeter" ]; then
-		grep -q -F 'greeter-session=lightdm-gtk-greeter' \
-			"${LDK_ROOTFS_DIR}/etc/lightdm/lightdm.conf.d/50-nvidia.conf" \
-			|| sed -i '1 agreeter-session=lightdm-gtk-greeter' \
-			"${LDK_ROOTFS_DIR}/etc/lightdm/lightdm.conf.d/50-nvidia.conf"
-	fi
-
 	# Set XScreensaver default mode as blank
 	if [ -e "${LDK_ROOTFS_DIR}/etc/X11/app-defaults/XScreenSaver" ]; then
 		sed -i "s/random/blank/" \
@@ -202,6 +176,22 @@ ENDOFHERE
 	if [ -e "${LDK_ROOTFS_DIR}/usr/lib/gnome-initial-setup/vendor.conf" ]; then
 		sed -i "s/language;/language;livepatch;/" \
 			"${LDK_ROOTFS_DIR}/usr/lib/gnome-initial-setup/vendor.conf"
+	fi
+
+	# Do not access pam_lastlog.so because the file was removed from Ubuntu 24.04
+	if [ -e "${LDK_ROOTFS_DIR}/etc/pam.d/login" ]; then
+		sed -i "/pam_lastlog.so/ s/^/#/" "${LDK_ROOTFS_DIR}/etc/pam.d/login"
+	fi
+
+	# Disable systemd-sysupdate.timer and systemd-sysupdate-reboot.timer
+	if [ -e "${LDK_ROOTFS_DIR}/usr/lib/systemd/system/systemd-sysupdate.timer" ]; then
+		ln -sf "/dev/null" "${LDK_ROOTFS_DIR}/etc/systemd/system/systemd-sysupdate.timer"
+		ln -sf "/dev/null" "${LDK_ROOTFS_DIR}/etc/systemd/system/systemd-sysupdate-reboot.timer"
+	fi
+
+	# Disable dnsmasq.service because the default port conflicts with systemd-resolved.service
+	if [ -h "${LDK_ROOTFS_DIR}/etc/systemd/system/multi-user.target.wants/dnsmasq.service" ]; then
+		rm -f "${LDK_ROOTFS_DIR}/etc/systemd/system/multi-user.target.wants/dnsmasq.service"
 	fi
 }
 
