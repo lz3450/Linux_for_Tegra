@@ -4,7 +4,7 @@
 
 !/tools
 !/tools/samplefs
-!/tools/samplefs/nvubuntu-jammy-lfs-aarch64-packages
+!/tools/samplefs/nvubuntu-*-aarch64-packages
 
 !/nv_tools/
 !/nv_tools/scripts
