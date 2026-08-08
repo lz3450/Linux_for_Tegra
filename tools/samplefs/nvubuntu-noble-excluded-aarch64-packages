@@ -9,7 +9,6 @@ auditd
 baobab
 bind9-dnsutils
 bolt
-bridge-utils
 bsdutils
 can-utils
 cloud-init
@@ -18,13 +17,11 @@ cracklib-runtime
 cron
 dash
 deja-dup
-device-tree-compiler
 dmidecode
 dns-root-data
 dnsmasq
 docbook-xml
 eatmydata
-efibootmgr
 enchant-2
 evince
 evolution-data-server
@@ -37,7 +34,6 @@ gamemode
 gdb
 gdbserver
 gdisk
-gir1.2-appindicator3-0.1
 gir1.2-gmenu-3.0
 gir1.2-gst-plugins-bad-1.0
 gkbd-capplet
@@ -87,7 +83,6 @@ libboost-log1.83.0
 libboost-regex1.83.0
 libboost-system1.83.0
 libc-devtools
-libc6-arm64-cross
 libc6-dbg
 libcanberra-gtk3-module
 libcanberra-pulse
@@ -138,7 +133,6 @@ libopenexr-dev
 libpam-fprintd
 libpam-gnome-keyring
 libpaper-utils
-libpcre3
 libphonenumber8
 libpipewire-0.3-common
 libpixman-1-dev
@@ -163,7 +157,6 @@ libreoffice-writer
 librist4
 librubberband2
 libsasl2-modules-gssapi-mit
-libseat1
 libshine3
 libsoxr0
 libssh-gcrypt-4
@@ -216,7 +209,6 @@ printer-driver-ptouch
 printer-driver-pxljr
 printer-driver-sag-gdi
 python3-babel
-python3-matplotlib
 python3-olefile
 python3-opengl
 python3-pandas
@@ -275,4 +267,3 @@ xserver-xorg-input-wacom
 xserver-xorg-legacy
 xserver-xorg-video-all
 xterm
-xxd
