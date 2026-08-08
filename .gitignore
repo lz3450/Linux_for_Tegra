@@ -6,6 +6,7 @@
 !/tools/samplefs
 !/tools/samplefs/nvubuntu-*-aarch64-packages
 !/tools/samplefs/*.py
+!/tools/samplefs/README.md
 
 !/nv_tools/
 !/nv_tools/scripts

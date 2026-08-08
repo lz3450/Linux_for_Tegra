@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reduce or selectively prune an Ubuntu package closure.
+"""Inspect and transform Ubuntu package lists with APT.
 
 The normal entry point runs the resolver in an ephemeral Ubuntu Docker
 container.  No packages are installed on the host.
@@ -24,52 +24,46 @@ ARCHIVE_ARCHITECTURES = {"amd64", "i386"}
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Generate APT-validated roots, or exclude selected roots and their "
-            "exclusively owned dependency cascades."
-        ),
-        epilog=(
-            "roots: nv_clean_package_list.py closure roots; "
-            "exclude: nv_clean_package_list.py closure filtered "
-            "--exclude-pkglist excludes [--include-pkglist includes]"
-        ),
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    def add_common_options(command_parser: argparse.ArgumentParser) -> None:
+        command_parser.add_argument("--suite", default="noble")
+        command_parser.add_argument("--architecture", default="arm64")
+        command_parser.add_argument("--docker-image", default="ubuntu:24.04")
+        command_parser.add_argument(
+            "--no-recommends", action="store_true",
+            help="exclude Recommends from dependency resolution",
+        )
+
+    roots = commands.add_parser("roots", help="reduce a closure to root packages")
+    add_common_options(roots)
+    roots.add_argument("--force", action="store_true")
+    roots.add_argument("input", type=Path)
+    roots.add_argument("output", type=Path)
+    roots.set_defaults(exclude_pkglist=None, include_pkglist=None)
+
+    filtering = commands.add_parser(
+        "filter", help="exclude roots and their private dependency cascades"
     )
-    parser.add_argument("input", type=Path, help="source package list")
-    parser.add_argument(
-        "output", type=Path,
-        help="root list, or filtered closure when --exclude-pkglist is used",
-    )
-    parser.add_argument(
-        "--exclude-pkglist",
-        type=Path,
-        help="remove listed root packages and their exclusive dependency cascades",
-    )
-    parser.add_argument(
-        "--include-pkglist",
-        type=Path,
-        help="protect listed packages and their complete dependency closures",
-    )
-    parser.add_argument(
-        "--suite", default="noble", help="Ubuntu suite/codename (default: noble)"
-    )
-    parser.add_argument(
-        "--architecture", default="arm64", help="target architecture (default: arm64)"
-    )
-    parser.add_argument(
-        "--docker-image",
-        default="ubuntu:24.04",
-        help="resolver image (default: ubuntu:24.04)",
-    )
-    parser.add_argument(
-        "--no-recommends",
-        action="store_true",
-        help="do not treat Recommends as normally installed dependencies",
-    )
-    parser.add_argument(
-        "--force", action="store_true", help="replace an existing output file"
-    )
-    parser.add_argument("--internal-resolve", action="store_true", help=argparse.SUPPRESS)
+    add_common_options(filtering)
+    filtering.add_argument("--exclude-pkglist", type=Path, required=True)
+    filtering.add_argument("--include-pkglist", type=Path)
+    filtering.add_argument("--force", action="store_true")
+    filtering.add_argument("input", type=Path)
+    filtering.add_argument("output", type=Path)
+
+    expand = commands.add_parser("expand", help="expand roots into an install closure")
+    add_common_options(expand)
+    expand.add_argument("--force", action="store_true")
+    expand.add_argument("input", type=Path)
+    expand.add_argument("output", type=Path)
+
+    check = commands.add_parser("check", help="check and optionally update a closure")
+    add_common_options(check)
+    check.add_argument("--yes", action="store_true", help="update without prompting")
+    check.add_argument("input", type=Path)
+
     return parser.parse_args()
 
 
@@ -84,13 +78,14 @@ def run(command: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
 
 def run_in_docker(args: argparse.Namespace) -> None:
     input_path = args.input.expanduser().resolve()
-    output_path = args.output.expanduser().resolve()
-    exclude_path = (
-        args.exclude_pkglist.expanduser().resolve() if args.exclude_pkglist else None
-    )
-    include_path = (
-        args.include_pkglist.expanduser().resolve() if args.include_pkglist else None
-    )
+    check_mode = args.command == "check"
+    exclude_path = None
+    include_path = None
+    if args.command == "filter":
+        exclude_path = args.exclude_pkglist.expanduser().resolve()
+        include_path = (
+            args.include_pkglist.expanduser().resolve() if args.include_pkglist else None
+        )
     script_path = Path(__file__).resolve()
 
     if not input_path.is_file():
@@ -99,19 +94,27 @@ def run_in_docker(args: argparse.Namespace) -> None:
         raise SystemExit(f"exclude package list does not exist: {exclude_path}")
     if include_path is not None and not include_path.is_file():
         raise SystemExit(f"include package list does not exist: {include_path}")
-    if include_path is not None and exclude_path is None:
-        raise SystemExit("--include-pkglist requires --exclude-pkglist")
-    if output_path in {input_path, exclude_path, include_path}:
-        raise SystemExit("output path must differ from all input paths")
-    if output_path.exists() and not args.force:
-        raise SystemExit(f"output already exists (use --force): {output_path}")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if check_mode:
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=f".{input_path.name}.closure-check.", dir=input_path.parent
+        )
+        os.close(descriptor)
+        output_path = Path(temporary_name)
+        output_path.unlink()
+    else:
+        output_path = args.output.expanduser().resolve()
+        if output_path in {input_path, exclude_path, include_path}:
+            raise SystemExit("output path must differ from all input paths")
+        if output_path.exists() and not args.force:
+            raise SystemExit(f"output already exists (use --force): {output_path}")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
     container_output = Path("/output") / output_path.name
     shell_program = """
 apt-get update >/dev/null
 DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-apt >/dev/null
-exec python3 /resolver.py --internal-resolve "$@"
+exec python3 /resolver.py "$@"
 """.strip()
     mounts = [
         "--volume", f"{script_path}:/resolver.py:ro",
@@ -127,28 +130,72 @@ exec python3 /resolver.py --internal-resolve "$@"
         "docker", "run", "--rm", *mounts,
         "--env", f"OUTPUT_UID={os.getuid()}",
         "--env", f"OUTPUT_GID={os.getgid()}",
-        "--env", f"DISPLAY_OUTPUT={output_path}",
+        "--env", "PACKAGE_LIST_INTERNAL=1",
+        "--env", f"DISPLAY_OUTPUT={output_path if not check_mode else '<closure-check>'}",
         args.docker_image,
         "sh", "-ceu", shell_program, "resolver",
-        "/input/packages", str(container_output),
+        "expand" if check_mode else args.command,
         "--suite", args.suite,
         "--architecture", args.architecture,
         "--docker-image", args.docker_image,
-        "--force",
     ]
     if args.no_recommends:
         command.append("--no-recommends")
-    if exclude_path is not None:
+    if args.command == "filter":
         command.extend(["--exclude-pkglist", "/input/exclude"])
-    if include_path is not None:
-        command.extend(["--include-pkglist", "/input/include"])
+        if include_path is not None:
+            command.extend(["--include-pkglist", "/input/include"])
+    command.extend(["--force", "/input/packages", str(container_output)])
 
     print(
-        f"Resolving Ubuntu {args.suite} {args.architecture} packages in "
+        f"Running {args.command} for Ubuntu {args.suite} {args.architecture} in "
         f"{args.docker_image}...",
         flush=True,
     )
-    run(command)
+    try:
+        run(command)
+    except BaseException:
+        if check_mode:
+            output_path.unlink(missing_ok=True)
+        raise
+    if check_mode:
+        check_closure_result(input_path, output_path, args.yes)
+
+
+def check_closure_result(input_path: Path, resolved_path: Path, assume_yes: bool) -> None:
+    original = read_package_list(input_path)
+    resolved = read_package_list(resolved_path)
+    original_set = set(original)
+    resolved_set = set(resolved)
+    missing = [name for name in resolved if name not in original_set]
+    unexpected = [name for name in original if name not in resolved_set]
+
+    if not missing and not unexpected:
+        resolved_path.unlink()
+        print(f"closure check passed: {input_path} ({len(original)} packages)")
+        return
+
+    print(f"closure check failed: {input_path}")
+    if missing:
+        print(f"missing packages ({len(missing)}):")
+        for package in missing:
+            print(f"  {package}")
+    if unexpected:
+        print(f"packages not selected by APT ({len(unexpected)}):")
+        for package in unexpected:
+            print(f"  {package}")
+
+    update = assume_yes
+    if not assume_yes:
+        print(f"Update {input_path} in place? [y/N] ", end="", flush=True)
+        update = sys.stdin.readline().strip().lower() in {"y", "yes"}
+    if update:
+        os.replace(resolved_path, input_path)
+        print(f"updated: {input_path} ({len(resolved)} packages)")
+        return
+    resolved_path.unlink()
+    print("not updated")
+    raise SystemExit(1)
 
 
 def configure_target_repositories(suite: str, architecture: str) -> None:
@@ -442,15 +489,12 @@ def write_output(path: Path, packages: list[str], source_mode: int) -> None:
     os.chown(path, uid, gid)
 
 
-def resolve(args: argparse.Namespace) -> None:
+def resolve_roots_or_filter(args: argparse.Namespace) -> None:
     input_path = args.input.resolve()
     output_path = args.output.resolve()
     packages = read_package_list(input_path)
     listed = set(packages)
     include_recommends = not args.no_recommends
-    if args.include_pkglist is not None and args.exclude_pkglist is None:
-        raise SystemExit("--include-pkglist requires --exclude-pkglist")
-
     configure_target_repositories(args.suite, args.architecture)
     _apt_pkg, cache, depcache = load_apt_cache(args.architecture)
 
@@ -481,7 +525,7 @@ def resolve(args: argparse.Namespace) -> None:
     )
 
     source_mode = stat.S_IMODE(input_path.stat().st_mode)
-    if args.exclude_pkglist is None:
+    if args.command == "roots":
         write_output(output_path, roots, source_mode)
         print(f"input packages:       {len(packages)}")
         print(f"dependency edges:     {edge_count}")
@@ -577,10 +621,47 @@ def resolve(args: argparse.Namespace) -> None:
     print(f"output: {os.environ.get('DISPLAY_OUTPUT', str(output_path))}")
 
 
+def resolve_expand(args: argparse.Namespace) -> None:
+    input_path = args.input.resolve()
+    output_path = args.output.resolve()
+    requested = read_package_list(input_path)
+    include_recommends = not args.no_recommends
+
+    configure_target_repositories(args.suite, args.architecture)
+    _apt_pkg, cache, depcache = load_apt_cache(args.architecture)
+    missing = [
+        name
+        for name in requested
+        if candidate(cache, depcache, name, args.architecture) is None
+    ]
+    if missing:
+        raise SystemExit(
+            f"{len(missing)} packages are unavailable for "
+            f"{args.suite}/{args.architecture}:\n" + "\n".join(missing)
+        )
+
+    installed = apt_install_closure(requested, args.architecture, include_recommends)
+    uncovered = [name for name in requested if name not in installed]
+    if uncovered:
+        raise SystemExit("APT did not select requested packages:\n" + "\n".join(uncovered))
+
+    output_packages = sorted(installed)
+    source_mode = stat.S_IMODE(input_path.stat().st_mode)
+    write_output(output_path, output_packages, source_mode)
+    print(f"requested packages: {len(requested)}")
+    print(f"packages to install: {len(output_packages)}")
+    print(f"output: {os.environ.get('DISPLAY_OUTPUT', str(output_path))}")
+
+
 def main() -> None:
     args = parse_arguments()
-    if args.internal_resolve:
-        resolve(args)
+    if os.environ.get("PACKAGE_LIST_INTERNAL") == "1":
+        if args.command in {"roots", "filter"}:
+            resolve_roots_or_filter(args)
+        elif args.command == "expand":
+            resolve_expand(args)
+        else:
+            raise SystemExit("check is a host-only command")
     else:
         run_in_docker(args)
 
