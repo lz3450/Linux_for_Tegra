@@ -774,3 +774,7 @@ yaru-theme-icon
 yaru-theme-sound
 zip
 zlib1g
+zsh
+zsh-autosuggestions
+zsh-common
+zsh-syntax-highlighting

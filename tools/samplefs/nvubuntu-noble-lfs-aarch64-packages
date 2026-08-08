@@ -72,3 +72,5 @@ wireless-regdb
 yaru-theme-gtk
 yaru-theme-icon
 yaru-theme-sound
+zsh-autosuggestions
+zsh-syntax-highlighting

@@ -1961,4 +1961,8 @@ zenity-common
 zip
 zlib1g
 zlib1g-dev
+zsh
+zsh-autosuggestions
+zsh-common
+zsh-syntax-highlighting
 zstd
