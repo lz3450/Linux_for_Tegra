@@ -5,6 +5,7 @@
 !/tools
 !/tools/samplefs
 !/tools/samplefs/nvubuntu-*-aarch64-packages
+!/tools/samplefs/*.py
 
 !/nv_tools/
 !/nv_tools/scripts
