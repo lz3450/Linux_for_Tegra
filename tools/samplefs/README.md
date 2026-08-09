@@ -9,56 +9,42 @@ importantly `--no-recommends`—throughout one workflow.
 
 ## Commands
 
-- `filter`: remove selected root packages and their private dependency
-  cascades. Only validated roots can be excluded. `--include-pkglist` protects
-  listed packages and all their dependencies. Shared dependencies are kept.
+- `filter`: optionally remove selected root packages and their private
+  dependency cascades. Only validated roots can be excluded.
+  `--include-pkglist` protects listed packages and all their dependencies.
+  Shared dependencies are kept.
 - `roots`: reduce an installation closure to packages needed as explicit APT
   seeds.
-- `expand`: simulate installing seeds and write every package APT selects.
-- `check`: verify that a list is an APT closure. If incomplete, show missing
-  packages and offer to update the file in place. Add `--yes` to skip the
-  prompt.
+- `expand`: simulate installing seeds and update the input package list with
+  every package APT selects.
+- `check`: report whether a package list is already a closure. It makes no
+  changes and exits with status 0 when complete or 1 when incomplete.
 
 ## Complete workflow
 
 ```bash
-./package_list.py filter \
-  --exclude-pkglist nvubuntu-noble-excluded-aarch64-packages \
-  --include-pkglist nvubuntu-noble-included-aarch64-packages \
-  --no-recommends --force \
-  nvubuntu-noble-desktop-aarch64-packages \
-  nvubuntu-noble-custom-aarch64-packages
 
-./package_list.py roots \
-  --no-recommends --force \
-  nvubuntu-noble-custom-aarch64-packages \
-  nvubuntu-noble-lfs-aarch64-packages
+# Optional
+./package_list.py expand --no-recommends original_pkglist
 
-./package_list.py expand \
-  --no-recommends --force \
-  nvubuntu-noble-lfs-aarch64-packages \
-  nvubuntu-noble-custom-aarch64-packages.new
+# Exclude selected packages
+./package_list.py filter --exclude-pkglist excluded-packages --include-pkglist included-packages --no-recommends --force original_pkglist filtered_pkglist
 
-cmp nvubuntu-noble-custom-aarch64-packages \
-    nvubuntu-noble-custom-aarch64-packages.new
+# Remove all dependency packages
+./package_list.py roots --no-recommends --force filtered_pkglist target_pkglist
+
 ```
 
-The final comparison should be identical.
-
-## Check or repair a closure
+## Check a closure
 
 ```bash
-./package_list.py check \
-  --no-recommends \
-  nvubuntu-noble-desktop-aarch64-packages
+./package_list.py check --no-recommends original_pkglist
 ```
 
-For a non-interactive update:
+Expand or repair it in place:
 
 ```bash
-./package_list.py check \
-  --no-recommends --yes \
-  nvubuntu-noble-desktop-aarch64-packages
+./package_list.py expand --no-recommends original_pkglist
 ```
 
 Common overrides are `--suite`, `--architecture`, and `--docker-image`.

@@ -47,7 +47,7 @@ def parse_arguments() -> argparse.Namespace:
         "filter", help="exclude roots and their private dependency cascades"
     )
     add_common_options(filtering)
-    filtering.add_argument("--exclude-pkglist", type=Path, required=True)
+    filtering.add_argument("--exclude-pkglist", type=Path)
     filtering.add_argument("--include-pkglist", type=Path)
     filtering.add_argument("--force", action="store_true")
     filtering.add_argument("input", type=Path)
@@ -55,13 +55,11 @@ def parse_arguments() -> argparse.Namespace:
 
     expand = commands.add_parser("expand", help="expand roots into an install closure")
     add_common_options(expand)
-    expand.add_argument("--force", action="store_true")
+    expand.add_argument("--output", type=Path, help=argparse.SUPPRESS)
     expand.add_argument("input", type=Path)
-    expand.add_argument("output", type=Path)
 
-    check = commands.add_parser("check", help="check and optionally update a closure")
+    check = commands.add_parser("check", help="check whether a list is a closure")
     add_common_options(check)
-    check.add_argument("--yes", action="store_true", help="update without prompting")
     check.add_argument("input", type=Path)
 
     return parser.parse_args()
@@ -79,10 +77,15 @@ def run(command: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
 def run_in_docker(args: argparse.Namespace) -> None:
     input_path = args.input.expanduser().resolve()
     check_mode = args.command == "check"
+    expand_in_place = args.command == "expand"
     exclude_path = None
     include_path = None
     if args.command == "filter":
-        exclude_path = args.exclude_pkglist.expanduser().resolve()
+        exclude_path = (
+            args.exclude_pkglist.expanduser().resolve()
+            if args.exclude_pkglist is not None
+            else None
+        )
         include_path = (
             args.include_pkglist.expanduser().resolve() if args.include_pkglist else None
         )
@@ -95,9 +98,9 @@ def run_in_docker(args: argparse.Namespace) -> None:
     if include_path is not None and not include_path.is_file():
         raise SystemExit(f"include package list does not exist: {include_path}")
 
-    if check_mode:
+    if check_mode or expand_in_place:
         descriptor, temporary_name = tempfile.mkstemp(
-            prefix=f".{input_path.name}.closure-check.", dir=input_path.parent
+            prefix=f".{input_path.name}.package-list.", dir=input_path.parent
         )
         os.close(descriptor)
         output_path = Path(temporary_name)
@@ -131,10 +134,10 @@ exec python3 /resolver.py "$@"
         "--env", f"OUTPUT_UID={os.getuid()}",
         "--env", f"OUTPUT_GID={os.getgid()}",
         "--env", "PACKAGE_LIST_INTERNAL=1",
-        "--env", f"DISPLAY_OUTPUT={output_path if not check_mode else '<closure-check>'}",
+        "--env", f"DISPLAY_OUTPUT={input_path if expand_in_place else (output_path if not check_mode else '<closure-check>')}",
         args.docker_image,
         "sh", "-ceu", shell_program, "resolver",
-        "expand" if check_mode else args.command,
+        "expand" if check_mode or expand_in_place else args.command,
         "--suite", args.suite,
         "--architecture", args.architecture,
         "--docker-image", args.docker_image,
@@ -142,10 +145,14 @@ exec python3 /resolver.py "$@"
     if args.no_recommends:
         command.append("--no-recommends")
     if args.command == "filter":
-        command.extend(["--exclude-pkglist", "/input/exclude"])
+        if exclude_path is not None:
+            command.extend(["--exclude-pkglist", "/input/exclude"])
         if include_path is not None:
             command.extend(["--include-pkglist", "/input/include"])
-    command.extend(["--force", "/input/packages", str(container_output)])
+    if check_mode or expand_in_place:
+        command.extend(["--output", str(container_output), "/input/packages"])
+    else:
+        command.extend(["--force", "/input/packages", str(container_output)])
 
     print(
         f"Running {args.command} for Ubuntu {args.suite} {args.architecture} in "
@@ -155,14 +162,17 @@ exec python3 /resolver.py "$@"
     try:
         run(command)
     except BaseException:
-        if check_mode:
+        if check_mode or expand_in_place:
             output_path.unlink(missing_ok=True)
         raise
     if check_mode:
-        check_closure_result(input_path, output_path, args.yes)
+        check_closure_result(input_path, output_path)
+    elif expand_in_place:
+        os.replace(output_path, input_path)
+        print(f"updated: {input_path}")
 
 
-def check_closure_result(input_path: Path, resolved_path: Path, assume_yes: bool) -> None:
+def check_closure_result(input_path: Path, resolved_path: Path) -> None:
     original = read_package_list(input_path)
     resolved = read_package_list(resolved_path)
     original_set = set(original)
@@ -184,17 +194,7 @@ def check_closure_result(input_path: Path, resolved_path: Path, assume_yes: bool
         print(f"packages not selected by APT ({len(unexpected)}):")
         for package in unexpected:
             print(f"  {package}")
-
-    update = assume_yes
-    if not assume_yes:
-        print(f"Update {input_path} in place? [y/N] ", end="", flush=True)
-        update = sys.stdin.readline().strip().lower() in {"y", "yes"}
-    if update:
-        os.replace(resolved_path, input_path)
-        print(f"updated: {input_path} ({len(resolved)} packages)")
-        return
     resolved_path.unlink()
-    print("not updated")
     raise SystemExit(1)
 
 
@@ -533,7 +533,11 @@ def resolve_roots_or_filter(args: argparse.Namespace) -> None:
         print(f"validated roots:      {len(roots)}")
         print(f"dependencies removed: {len(packages) - len(roots)}")
     else:
-        requested = read_package_list(args.exclude_pkglist.resolve())
+        requested = (
+            read_package_list(args.exclude_pkglist.resolve())
+            if args.exclude_pkglist is not None
+            else []
+        )
         requested_includes = (
             read_package_list(args.include_pkglist.resolve())
             if args.include_pkglist is not None
@@ -661,7 +665,7 @@ def main() -> None:
         elif args.command == "expand":
             resolve_expand(args)
         else:
-            raise SystemExit("check is a host-only command")
+            raise SystemExit(f"unsupported internal command: {args.command}")
     else:
         run_in_docker(args)
 
