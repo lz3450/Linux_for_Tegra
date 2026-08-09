@@ -41,6 +41,7 @@ iputils-ping
 iw
 less
 libc6-arm64-cross
+libgstreamer-plugins-bad1.0-0
 libpcre3
 libseat1
 linux-firmware
