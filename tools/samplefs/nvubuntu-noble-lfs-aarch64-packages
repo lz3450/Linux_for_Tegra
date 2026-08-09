@@ -2,6 +2,7 @@ autoconf
 bash-completion
 bison
 bridge-utils
+build-essential
 curl
 debconf-utils
 device-tree-compiler
@@ -47,7 +48,6 @@ libseat1
 linux-firmware
 login
 lshw
-make
 mtd-utils
 nautilus-extension-gnome-terminal
 nautilus-sendto

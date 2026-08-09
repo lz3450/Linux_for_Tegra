@@ -50,6 +50,7 @@ bridge-utils
 bsdextrautils
 bsdutils
 bubblewrap
+build-essential
 busybox-initramfs
 busybox-static
 bzip2
@@ -108,6 +109,7 @@ dnsmasq-base
 docbook-xml
 dosfstools
 dpkg
+dpkg-dev
 dpkg-repack
 dracut-install
 duplicity
@@ -152,6 +154,10 @@ fprintd
 fuse3
 fwupd
 fwupd-signed
+g++
+g++-13
+g++-13-aarch64-linux-gnu
+g++-aarch64-linux-gnu
 gamemode
 gamemode-daemon
 gcc
@@ -1277,6 +1283,7 @@ libsss-certmap0
 libsss-idmap0
 libsss-nss-idmap0
 libstartup-notification0
+libstdc++-13-dev
 libstdc++6
 libstemmer0d
 libsuitesparseconfig7
@@ -1526,6 +1533,7 @@ lpr
 lsb-release
 lshw
 lsof
+lto-disabled-list
 m4
 make
 man-db

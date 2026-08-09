@@ -6,6 +6,9 @@ aptdaemon-data
 at-spi2-common
 autoconf
 bash-completion
+binutils
+binutils-aarch64-linux-gnu
+binutils-common
 bison
 blt
 bluez
@@ -13,6 +16,7 @@ bluez-obexd
 bogl-bterm
 bridge-utils
 bubblewrap
+build-essential
 busybox-initramfs
 busybox-static
 bzip2
@@ -20,6 +24,10 @@ console-setup
 console-setup-linux
 coreutils
 cpio
+cpp
+cpp-13
+cpp-13-aarch64-linux-gnu
+cpp-aarch64-linux-gnu
 cryptsetup
 cryptsetup-bin
 curl
@@ -45,6 +53,7 @@ distro-info-data
 dmsetup
 dosfstools
 dpkg
+dpkg-dev
 dpkg-repack
 dracut-install
 e2fsprogs
@@ -69,7 +78,16 @@ fonts-noto-color-emoji
 fonts-noto-core
 fonts-noto-mono
 fuse3
+g++
+g++-13
+g++-13-aarch64-linux-gnu
+g++-aarch64-linux-gnu
+gcc
+gcc-13
+gcc-13-aarch64-linux-gnu
+gcc-13-base
 gcc-14-base
+gcc-aarch64-linux-gnu
 gcr
 gcr4
 geoclue-2.0
@@ -196,6 +214,7 @@ libappstream5
 libapt-pkg6.0t64
 libarchive13t64
 libargon2-1
+libasan8
 libasound2-data
 libasound2t64
 libaspell15
@@ -204,6 +223,7 @@ libasyncns0
 libatasmart4
 libatk-bridge2.0-0t64
 libatk1.0-0t64
+libatomic1
 libatspi2.0-0t64
 libattr1
 libaudit-common
@@ -216,6 +236,7 @@ libavc1394-0
 libayatana-appindicator3-1
 libayatana-ido3-0.4-0
 libayatana-indicator3-7
+libbinutils
 libblas3
 libblkid1
 libblockdev-crypto3
@@ -234,8 +255,10 @@ libbsd0
 libbytesize-common
 libbytesize1
 libbz2-1.0
+libc-dev-bin
 libc6
 libc6-arm64-cross
+libc6-dev
 libcaca0
 libcairo-gobject2
 libcairo-script-interpreter2
@@ -248,12 +271,16 @@ libcap-ng0
 libcap2
 libcap2-bin
 libcbor0.10
+libcc1-0
 libcdparanoia0
 libcolord2
 libcom-err2
 libcrack2
+libcrypt-dev
 libcrypt1
 libcryptsetup12
+libctf-nobfd0
+libctf0
 libcups2t64
 libcurl3t64-gnutls
 libcurl4t64
@@ -310,6 +337,7 @@ libfreetype6
 libfribidi0
 libfuse3-3
 libgbm1
+libgcc-13-dev
 libgcc-s1
 libgck-1-0
 libgck-2-2
@@ -348,6 +376,7 @@ libgomp1
 libgpg-error0
 libgpgme11t64
 libgpm2
+libgprofng0
 libgraphene-1.0-0
 libgraphite2-3
 libgssapi-krb5-2
@@ -379,6 +408,7 @@ libharfbuzz-icu0
 libharfbuzz0b
 libhogweed6t64
 libhunspell-1.7-0
+libhwasan0
 libhyphen0
 libi2c0
 libibus-1.0-5
@@ -392,6 +422,8 @@ libimobiledevice6
 libiniparser1
 libinput-bin
 libinput10
+libisl23
+libitm1
 libiw30t64
 libjansson4
 libjavascriptcoregtk-4.1-0
@@ -421,6 +453,7 @@ libldap2
 liblerc4
 libllvm20
 liblocale-gettext-perl
+liblsan0
 libltdl7
 liblua5.4-0
 liblz4-1
@@ -433,6 +466,7 @@ libmnl0
 libmount1
 libmozjs-115-0t64
 libmp3lame0
+libmpc3
 libmpfr6
 libmpg123-0t64
 libmtdev1t64
@@ -523,6 +557,7 @@ libsemanage2
 libsensors-config
 libsensors5
 libsepol2
+libsframe1
 libsharpyuv0
 libshout3
 libsigc++-3.0-0
@@ -542,6 +577,7 @@ libss2
 libssh-4
 libssl3t64
 libstartup-notification0
+libstdc++-13-dev
 libstdc++6
 libstemmer0d
 libsysmetrics1
@@ -564,6 +600,7 @@ libtinfo6
 libtirpc-common
 libtirpc3t64
 libtk8.6
+libtsan2
 libtss2-esys-3.0.2-0t64
 libtss2-mu-4.0.1-0t64
 libtss2-rc0t64
@@ -576,6 +613,7 @@ libtss2-tcti-spi-helper0t64
 libtss2-tcti-swtpm0t64
 libtss2-tctildr0t64
 libtwolame0
+libubsan1
 libudev1
 libudisks2-0
 libunistring5
@@ -665,11 +703,13 @@ libyaml-0-2
 libzstd1
 linux-base
 linux-firmware
+linux-libc-dev
 login
 logsave
 lsb-base
 lsb-release
 lshw
+lto-disabled-list
 m4
 make
 media-types
@@ -702,6 +742,7 @@ p11-kit
 p11-kit-modules
 parted
 passwd
+patch
 perl
 perl-base
 perl-modules-5.38
@@ -768,6 +809,7 @@ python3.12
 python3.12-minimal
 rdate
 readline-common
+rpcsvc-proto
 rsync
 rsyslog
 seahorse
@@ -829,6 +871,7 @@ xml-core
 xserver-common
 xwayland
 xxd
+xz-utils
 yaru-theme-gnome-shell
 yaru-theme-gtk
 yaru-theme-icon
