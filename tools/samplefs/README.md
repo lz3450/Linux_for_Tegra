@@ -1,11 +1,14 @@
 # Ubuntu package-list tools
 
-`package_list.py` analyzes Ubuntu package lists with APT in an isolated Docker
-container. It defaults to Ubuntu Noble and ARM64, uses an empty target package
-status, and does not modify the host package database.
+`package_list.py` analyzes Ubuntu package lists using isolated APT metadata. It
+defaults to Ubuntu Noble, AMD64, and the Docker backend. It uses an empty target
+package status and does not modify the host package database.
 
-Docker and network access are required. Use the same dependency options—most
-importantly `--no-recommends`—throughout one workflow.
+The default `package-list-resolver:ubuntu-24.04` image is built automatically
+from `Dockerfile.package-list-resolver` when missing. Use `--backend native` to
+run without Docker; it requires `apt-get`, `python3-apt`, `ubuntu-keyring`, and
+network access. Recommends are excluded by default; use `--recommends` to
+include them. Use the same dependency options throughout one workflow.
 
 ## Commands
 
@@ -25,26 +28,35 @@ importantly `--no-recommends`—throughout one workflow.
 ```bash
 
 # Optional
-./package_list.py expand --no-recommends original_pkglist
+./package_list.py expand original_pkglist
 
 # Exclude selected packages
-./package_list.py filter --exclude-pkglist excluded-packages --include-pkglist included-packages --no-recommends --force original_pkglist filtered_pkglist
+./package_list.py filter --exclude-pkglist excluded-packages --include-pkglist included-packages --force original_pkglist filtered_pkglist
 
 # Remove all dependency packages
-./package_list.py roots --no-recommends --force filtered_pkglist target_pkglist
+./package_list.py roots --force filtered_pkglist target_pkglist
 
 ```
 
 ## Check a closure
 
 ```bash
-./package_list.py check --no-recommends original_pkglist
+./package_list.py check original_pkglist
 ```
 
 Expand or repair it in place:
 
 ```bash
-./package_list.py expand --no-recommends original_pkglist
+./package_list.py expand original_pkglist
 ```
 
-Common overrides are `--suite`, `--architecture`, and `--docker-image`.
+Common overrides are `--suite`, `--architecture`, and `--backend`. Docker also
+accepts `--docker-image`.
+
+For ARM64 resolution in Docker:
+
+```bash
+./package_list.py check \
+  --architecture arm64 \
+  nvubuntu-noble-desktop-aarch64-packages
+```

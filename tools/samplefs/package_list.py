@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Inspect and transform Ubuntu package lists with APT.
-
-The normal entry point runs the resolver in an ephemeral Ubuntu Docker
-container.  No packages are installed on the host.
-"""
+"""Inspect and transform Ubuntu package lists with isolated APT metadata."""
 
 from __future__ import annotations
 
@@ -21,6 +17,9 @@ PACKAGE_RE = re.compile(r"^[a-z0-9][a-z0-9+.-]*$")
 INSTALL_RE = re.compile(r"^Inst\s+(\S+)", re.MULTILINE)
 PORTS_ARCHITECTURES = {"arm64", "armhf", "ppc64el", "riscv64", "s390x"}
 ARCHIVE_ARCHITECTURES = {"amd64", "i386"}
+APT_ROOT_ENV = "PACKAGE_LIST_APT_ROOT"
+DEFAULT_DOCKER_IMAGE = "package-list-resolver:ubuntu-24.04"
+RESOLVER_DOCKERFILE = "Dockerfile.package-list-resolver"
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -29,11 +28,21 @@ def parse_arguments() -> argparse.Namespace:
 
     def add_common_options(command_parser: argparse.ArgumentParser) -> None:
         command_parser.add_argument("--suite", default="noble")
-        command_parser.add_argument("--architecture", default="arm64")
-        command_parser.add_argument("--docker-image", default="ubuntu:24.04")
         command_parser.add_argument(
-            "--no-recommends", action="store_true",
-            help="exclude Recommends from dependency resolution",
+            "--architecture", default="amd64",
+            help="target architecture (default: amd64)",
+        )
+        command_parser.add_argument(
+            "--backend", choices=("native", "docker"), default="docker",
+            help="resolver backend (default: docker)",
+        )
+        command_parser.add_argument(
+            "--docker-image", default=DEFAULT_DOCKER_IMAGE,
+            help=f"Docker resolver image (default: {DEFAULT_DOCKER_IMAGE})",
+        )
+        command_parser.add_argument(
+            "--recommends", action="store_true",
+            help="include Recommends in dependency resolution",
         )
 
     roots = commands.add_parser("roots", help="reduce a closure to root packages")
@@ -74,10 +83,8 @@ def run(command: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
         raise SystemExit(error.returncode) from error
 
 
-def run_in_docker(args: argparse.Namespace) -> None:
+def native_input_paths(args: argparse.Namespace) -> tuple[Path, Path | None, Path | None]:
     input_path = args.input.expanduser().resolve()
-    check_mode = args.command == "check"
-    expand_in_place = args.command == "expand"
     exclude_path = None
     include_path = None
     if args.command == "filter":
@@ -89,7 +96,6 @@ def run_in_docker(args: argparse.Namespace) -> None:
         include_path = (
             args.include_pkglist.expanduser().resolve() if args.include_pkglist else None
         )
-    script_path = Path(__file__).resolve()
 
     if not input_path.is_file():
         raise SystemExit(f"input package list does not exist: {input_path}")
@@ -97,26 +103,140 @@ def run_in_docker(args: argparse.Namespace) -> None:
         raise SystemExit(f"exclude package list does not exist: {exclude_path}")
     if include_path is not None and not include_path.is_file():
         raise SystemExit(f"include package list does not exist: {include_path}")
+    return input_path, exclude_path, include_path
 
-    if check_mode or expand_in_place:
+
+def prepare_host_output(
+    args: argparse.Namespace,
+    input_path: Path,
+    exclude_path: Path | None,
+    include_path: Path | None,
+) -> tuple[Path, bool]:
+    in_place = args.command in {"check", "expand"}
+    if in_place:
         descriptor, temporary_name = tempfile.mkstemp(
             prefix=f".{input_path.name}.package-list.", dir=input_path.parent
         )
         os.close(descriptor)
         output_path = Path(temporary_name)
         output_path.unlink()
-    else:
-        output_path = args.output.expanduser().resolve()
-        if output_path in {input_path, exclude_path, include_path}:
-            raise SystemExit("output path must differ from all input paths")
-        if output_path.exists() and not args.force:
-            raise SystemExit(f"output already exists (use --force): {output_path}")
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        return output_path, True
+
+    output_path = args.output.expanduser().resolve()
+    if output_path in {input_path, exclude_path, include_path}:
+        raise SystemExit("output path must differ from all input paths")
+    if output_path.exists() and not args.force:
+        raise SystemExit(f"output already exists (use --force): {output_path}")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    return output_path, False
+
+
+def finish_host_output(args: argparse.Namespace, input_path: Path, output_path: Path) -> None:
+    if args.command == "check":
+        check_closure_result(input_path, output_path)
+    elif args.command == "expand":
+        os.replace(output_path, input_path)
+        print(f"updated: {input_path}")
+
+
+def run_native(args: argparse.Namespace) -> None:
+    try:
+        import apt_pkg  # noqa: F401
+    except ImportError as error:
+        raise SystemExit(
+            "native backend requires python3-apt; install it or use --backend docker"
+        ) from error
+
+    input_path, exclude_path, include_path = native_input_paths(args)
+    output_path, temporary_output = prepare_host_output(
+        args, input_path, exclude_path, include_path
+    )
+    internal_args = argparse.Namespace(**vars(args))
+    internal_args.command = "expand" if args.command == "check" else args.command
+    internal_args.input = input_path
+    internal_args.output = output_path
+    if exclude_path is not None:
+        internal_args.exclude_pkglist = exclude_path
+    if include_path is not None:
+        internal_args.include_pkglist = include_path
+
+    old_apt_root = os.environ.get(APT_ROOT_ENV)
+    old_display_output = os.environ.get("DISPLAY_OUTPUT")
+    display_output = (
+        "<closure-check>" if args.command == "check"
+        else input_path if args.command == "expand"
+        else output_path
+    )
+    print(
+        f"Running {args.command} for Ubuntu {args.suite} {args.architecture} "
+        "with native APT...",
+        flush=True,
+    )
+    try:
+        with tempfile.TemporaryDirectory(prefix="package-list-apt-") as apt_root:
+            os.environ[APT_ROOT_ENV] = apt_root
+            os.environ["DISPLAY_OUTPUT"] = str(display_output)
+            if internal_args.command in {"roots", "filter"}:
+                resolve_roots_or_filter(internal_args)
+            else:
+                resolve_expand(internal_args)
+    except BaseException:
+        if temporary_output:
+            output_path.unlink(missing_ok=True)
+        raise
+    finally:
+        if old_apt_root is None:
+            os.environ.pop(APT_ROOT_ENV, None)
+        else:
+            os.environ[APT_ROOT_ENV] = old_apt_root
+        if old_display_output is None:
+            os.environ.pop("DISPLAY_OUTPUT", None)
+        else:
+            os.environ["DISPLAY_OUTPUT"] = old_display_output
+    finish_host_output(args, input_path, output_path)
+
+
+def ensure_default_docker_image(image: str, script_path: Path) -> None:
+    if image != DEFAULT_DOCKER_IMAGE:
+        return
+    try:
+        inspected = subprocess.run(
+            ["docker", "image", "inspect", image],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+    except FileNotFoundError as error:
+        raise SystemExit("required command not found: docker") from error
+    if inspected.returncode == 0:
+        return
+
+    dockerfile = script_path.with_name(RESOLVER_DOCKERFILE)
+    if not dockerfile.is_file():
+        raise SystemExit(f"resolver Dockerfile does not exist: {dockerfile}")
+    print(f"Building missing Docker image {image}...", flush=True)
+    run([
+        "docker", "build", "--tag", image,
+        "--file", str(dockerfile), str(dockerfile.parent),
+    ])
+
+
+def run_in_docker(args: argparse.Namespace) -> None:
+    input_path, exclude_path, include_path = native_input_paths(args)
+    check_mode = args.command == "check"
+    expand_in_place = args.command == "expand"
+    script_path = Path(__file__).resolve()
+    ensure_default_docker_image(args.docker_image, script_path)
+    output_path, temporary_output = prepare_host_output(
+        args, input_path, exclude_path, include_path
+    )
 
     container_output = Path("/output") / output_path.name
     shell_program = """
-apt-get update >/dev/null
-DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-apt >/dev/null
+if ! python3 -c 'import apt_pkg' 2>/dev/null; then
+    apt-get update >/dev/null
+    DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-apt >/dev/null
+fi
 exec python3 /resolver.py "$@"
 """.strip()
     mounts = [
@@ -142,8 +262,8 @@ exec python3 /resolver.py "$@"
         "--architecture", args.architecture,
         "--docker-image", args.docker_image,
     ]
-    if args.no_recommends:
-        command.append("--no-recommends")
+    if args.recommends:
+        command.append("--recommends")
     if args.command == "filter":
         if exclude_path is not None:
             command.extend(["--exclude-pkglist", "/input/exclude"])
@@ -162,14 +282,10 @@ exec python3 /resolver.py "$@"
     try:
         run(command)
     except BaseException:
-        if check_mode or expand_in_place:
+        if temporary_output:
             output_path.unlink(missing_ok=True)
         raise
-    if check_mode:
-        check_closure_result(input_path, output_path)
-    elif expand_in_place:
-        os.replace(output_path, input_path)
-        print(f"updated: {input_path}")
+    finish_host_output(args, input_path, output_path)
 
 
 def check_closure_result(input_path: Path, resolved_path: Path) -> None:
@@ -198,6 +314,38 @@ def check_closure_result(input_path: Path, resolved_path: Path) -> None:
     raise SystemExit(1)
 
 
+def isolated_apt_options(architecture: str) -> list[str]:
+    options = [
+        "-o", f"APT::Architecture={architecture}",
+        "-o", f"APT::Architectures::={architecture}",
+    ]
+    apt_root = os.environ.get(APT_ROOT_ENV)
+    if apt_root is None:
+        return options + ["-o", "Dir::State::status=/tmp/empty-dpkg-status"]
+
+    root = Path(apt_root)
+    settings = {
+        "Dir::Etc::main": root / "etc/apt/apt.conf",
+        "Dir::Etc::parts": root / "etc/apt/apt.conf.d",
+        "Dir::Etc::sourcelist": root / "etc/apt/sources.list",
+        "Dir::Etc::sourceparts": root / "etc/apt/sources.list.d",
+        "Dir::Etc::preferences": root / "etc/apt/preferences",
+        "Dir::Etc::preferencesparts": root / "etc/apt/preferences.d",
+        "Dir::Etc::trusted": root / "etc/apt/trusted.gpg",
+        "Dir::Etc::trustedparts": root / "etc/apt/trusted.gpg.d",
+        "Dir::State::lists": root / "var/lib/apt/lists",
+        "Dir::State::status": root / "var/lib/dpkg/status",
+        "Dir::Cache::archives": root / "var/cache/apt/archives",
+        "Dir::Cache::pkgcache": root / "var/cache/apt/pkgcache.bin",
+        "Dir::Cache::srcpkgcache": root / "var/cache/apt/srcpkgcache.bin",
+        "Dir::Log": root / "var/log/apt",
+    }
+    for key, value in settings.items():
+        options.extend(["-o", f"{key}={value}"])
+    options.extend(["-o", "Debug::NoLocking=1", "-o", "Acquire::Languages=none"])
+    return options
+
+
 def configure_target_repositories(suite: str, architecture: str) -> None:
     if architecture in PORTS_ARCHITECTURES:
         archive_uri = security_uri = "http://ports.ubuntu.com/ubuntu-ports/"
@@ -211,11 +359,33 @@ def configure_target_repositories(suite: str, architecture: str) -> None:
             f"choose one of: {', '.join(supported)}"
         )
 
-    sources_dir = Path("/etc/apt/sources.list.d")
-    for source_file in sources_dir.iterdir():
-        if source_file.suffix in {".list", ".sources"}:
-            source_file.unlink()
-    Path("/etc/apt/sources.list").write_text("", encoding="utf-8")
+    apt_root = os.environ.get(APT_ROOT_ENV)
+    if apt_root is None:
+        sources_dir = Path("/etc/apt/sources.list.d")
+        source_list = Path("/etc/apt/sources.list")
+        for source_file in sources_dir.iterdir():
+            if source_file.suffix in {".list", ".sources"}:
+                source_file.unlink()
+    else:
+        root = Path(apt_root)
+        sources_dir = root / "etc/apt/sources.list.d"
+        source_list = root / "etc/apt/sources.list"
+        for directory in (
+            root / "etc/apt/apt.conf.d",
+            sources_dir,
+            root / "etc/apt/preferences.d",
+            root / "etc/apt/trusted.gpg.d",
+            root / "var/lib/apt/lists/partial",
+            root / "var/lib/dpkg",
+            root / "var/cache/apt/archives/partial",
+            root / "var/log/apt",
+        ):
+            directory.mkdir(parents=True, exist_ok=True)
+        (root / "etc/apt/apt.conf").touch()
+        (root / "etc/apt/preferences").touch()
+        (root / "etc/apt/trusted.gpg").touch()
+        (root / "var/lib/dpkg/status").touch()
+    source_list.write_text("", encoding="utf-8")
     source_text = f"""Types: deb
 URIs: {archive_uri}
 Suites: {suite} {suite}-updates {suite}-backports
@@ -232,14 +402,10 @@ Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 """
     (sources_dir / "target.sources").write_text(source_text, encoding="utf-8")
 
-    run(["dpkg", "--add-architecture", architecture])
+    if apt_root is None:
+        run(["dpkg", "--add-architecture", architecture])
     run(
-        [
-            "apt-get",
-            "-o", f"APT::Architecture={architecture}",
-            "-o", f"APT::Architectures::={architecture}",
-            "update",
-        ],
+        ["apt-get", *isolated_apt_options(architecture), "update"],
         stdout=subprocess.DEVNULL,
     )
 
@@ -270,11 +436,18 @@ def load_apt_cache(architecture: str):
     except ImportError as error:
         raise SystemExit("python3-apt is required in internal resolver mode") from error
 
-    Path("/tmp/empty-dpkg-status").write_text("", encoding="utf-8")
+    apt_root = os.environ.get(APT_ROOT_ENV)
+    status_path = (
+        Path(apt_root) / "var/lib/dpkg/status"
+        if apt_root is not None
+        else Path("/tmp/empty-dpkg-status")
+    )
+    status_path.touch()
     apt_pkg.init_config()
-    apt_pkg.config.set("APT::Architecture", architecture)
-    apt_pkg.config.set("APT::Architectures::", architecture)
-    apt_pkg.config.set("Dir::State::status", "/tmp/empty-dpkg-status")
+    option_pairs = isolated_apt_options(architecture)
+    for index in range(0, len(option_pairs), 2):
+        key, value = option_pairs[index + 1].split("=", 1)
+        apt_pkg.config.set(key, value)
     apt_pkg.init_system()
     cache = apt_pkg.Cache()
     return apt_pkg, cache, apt_pkg.DepCache(cache)
@@ -310,10 +483,7 @@ def named_dependency_targets(version, listed: set[str], include_recommends: bool
 
 def apt_install_closure(roots: list[str], architecture: str, include_recommends: bool) -> set[str]:
     command = [
-        "apt-get", "-s",
-        "-o", f"APT::Architecture={architecture}",
-        "-o", f"APT::Architectures::={architecture}",
-        "-o", "Dir::State::status=/tmp/empty-dpkg-status",
+        "apt-get", "-s", *isolated_apt_options(architecture),
         "-o", f"APT::Install-Recommends={'true' if include_recommends else 'false'}",
         "install", *roots,
     ]
@@ -484,9 +654,8 @@ def write_output(path: Path, packages: list[str], source_mode: int) -> None:
         stream.write("\n".join(packages) + "\n")
     os.chmod(temporary_path, source_mode)
     os.replace(temporary_path, path)
-    uid = int(os.environ.get("OUTPUT_UID", "0"))
-    gid = int(os.environ.get("OUTPUT_GID", "0"))
-    os.chown(path, uid, gid)
+    if "OUTPUT_UID" in os.environ and "OUTPUT_GID" in os.environ:
+        os.chown(path, int(os.environ["OUTPUT_UID"]), int(os.environ["OUTPUT_GID"]))
 
 
 def resolve_roots_or_filter(args: argparse.Namespace) -> None:
@@ -494,7 +663,7 @@ def resolve_roots_or_filter(args: argparse.Namespace) -> None:
     output_path = args.output.resolve()
     packages = read_package_list(input_path)
     listed = set(packages)
-    include_recommends = not args.no_recommends
+    include_recommends = args.recommends
     configure_target_repositories(args.suite, args.architecture)
     _apt_pkg, cache, depcache = load_apt_cache(args.architecture)
 
@@ -629,7 +798,7 @@ def resolve_expand(args: argparse.Namespace) -> None:
     input_path = args.input.resolve()
     output_path = args.output.resolve()
     requested = read_package_list(input_path)
-    include_recommends = not args.no_recommends
+    include_recommends = args.recommends
 
     configure_target_repositories(args.suite, args.architecture)
     _apt_pkg, cache, depcache = load_apt_cache(args.architecture)
@@ -666,8 +835,10 @@ def main() -> None:
             resolve_expand(args)
         else:
             raise SystemExit(f"unsupported internal command: {args.command}")
-    else:
+    elif args.backend == "docker":
         run_in_docker(args)
+    else:
+        run_native(args)
 
 
 if __name__ == "__main__":
