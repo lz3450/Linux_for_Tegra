@@ -19,7 +19,14 @@ PORTS_ARCHITECTURES = {"arm64", "armhf", "ppc64el", "riscv64", "s390x"}
 ARCHIVE_ARCHITECTURES = {"amd64", "i386"}
 APT_ROOT_ENV = "PACKAGE_LIST_APT_ROOT"
 DEFAULT_DOCKER_IMAGE = "package-list-resolver:ubuntu-24.04"
-RESOLVER_DOCKERFILE = "Dockerfile.package-list-resolver"
+RESOLVER_DOCKERFILE = """\
+FROM ubuntu:24.04
+
+RUN apt-get update \\
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \\
+        python3 python3-apt \\
+    && rm -rf /var/lib/apt/lists/*
+"""
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -196,7 +203,7 @@ def run_native(args: argparse.Namespace) -> None:
     finish_host_output(args, input_path, output_path)
 
 
-def ensure_default_docker_image(image: str, script_path: Path) -> None:
+def ensure_default_docker_image(image: str) -> None:
     if image != DEFAULT_DOCKER_IMAGE:
         return
     try:
@@ -211,14 +218,8 @@ def ensure_default_docker_image(image: str, script_path: Path) -> None:
     if inspected.returncode == 0:
         return
 
-    dockerfile = script_path.with_name(RESOLVER_DOCKERFILE)
-    if not dockerfile.is_file():
-        raise SystemExit(f"resolver Dockerfile does not exist: {dockerfile}")
     print(f"Building missing Docker image {image}...", flush=True)
-    run([
-        "docker", "build", "--tag", image,
-        "--file", str(dockerfile), str(dockerfile.parent),
-    ])
+    run(["docker", "build", "--tag", image, "-"], input=RESOLVER_DOCKERFILE)
 
 
 def run_in_docker(args: argparse.Namespace) -> None:
@@ -226,7 +227,7 @@ def run_in_docker(args: argparse.Namespace) -> None:
     check_mode = args.command == "check"
     expand_in_place = args.command == "expand"
     script_path = Path(__file__).resolve()
-    ensure_default_docker_image(args.docker_image, script_path)
+    ensure_default_docker_image(args.docker_image)
     output_path, temporary_output = prepare_host_output(
         args, input_path, exclude_path, include_path
     )

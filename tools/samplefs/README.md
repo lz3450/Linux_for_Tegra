@@ -4,11 +4,12 @@
 defaults to Ubuntu Noble, AMD64, and the Docker backend. It uses an empty target
 package status and does not modify the host package database.
 
-The default `package-list-resolver:ubuntu-24.04` image is built automatically
-from `Dockerfile.package-list-resolver` when missing. Use `--backend native` to
-run without Docker; it requires `apt-get`, `python3-apt`, `ubuntu-keyring`, and
-network access. Recommends are excluded by default; use `--recommends` to
-include them. Use the same dependency options throughout one workflow.
+The self-contained script builds the default
+`package-list-resolver:ubuntu-24.04` image automatically when missing. Use
+`--backend native` to run without Docker; it requires `apt-get`, `python3-apt`,
+`ubuntu-keyring`, and network access. Recommends are excluded by default; use
+`--recommends` to include them. Use the same dependency options throughout one
+workflow.
 
 ## Commands
 
