@@ -33,7 +33,6 @@ fwupd-signed
 gamemode
 gdb
 gdbserver
-gdisk
 gir1.2-gmenu-3.0
 gir1.2-gst-plugins-bad-1.0
 gkbd-capplet
@@ -66,7 +65,6 @@ im-config
 iperf3
 ipp-usb
 iptables
-isc-dhcp-client
 isc-dhcp-server
 jq
 kerneloops
@@ -117,7 +115,6 @@ libmbim-utils
 libmtp-runtime
 libmysofa1
 libnet-dbus-perl
-libnsl2
 libnss-mdns
 libnss-systemd
 libopencv-contrib406t64

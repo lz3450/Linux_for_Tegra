@@ -5,6 +5,8 @@ aptdaemon
 aptdaemon-data
 at-spi2-common
 autoconf
+base-files
+bash
 bash-completion
 binutils
 binutils-aarch64-linux-gnu
@@ -38,6 +40,7 @@ dbus-session-bus-common
 dbus-system-bus-common
 dbus-user-session
 dbus-x11
+dconf-cli
 dconf-gsettings-backend
 dconf-service
 dctrl-tools
@@ -62,6 +65,8 @@ emacsen-common
 eog
 ethtool
 evolution-data-server-common
+fdisk
+file
 file-roller
 findutils
 flex
@@ -77,6 +82,7 @@ fonts-noto-cjk
 fonts-noto-color-emoji
 fonts-noto-core
 fonts-noto-mono
+fonts-ubuntu
 fuse3
 g++
 g++-13
@@ -90,6 +96,8 @@ gcc-14-base
 gcc-aarch64-linux-gnu
 gcr
 gcr4
+gdisk
+gdm3
 geoclue-2.0
 geocode-glib-common
 gettext-base
@@ -195,6 +203,7 @@ initramfs-tools-bin
 initramfs-tools-core
 iproute2
 iputils-ping
+isc-dhcp-client
 iso-codes
 iw
 kbd
@@ -255,6 +264,7 @@ libbsd0
 libbytesize-common
 libbytesize1
 libbz2-1.0
+libc-bin
 libc-dev-bin
 libc6
 libc6-arm64-cross
@@ -459,6 +469,8 @@ liblua5.4-0
 liblz4-1
 liblzma5
 liblzo2-2
+libmagic-mgc
+libmagic1t64
 libmanette-0.2-0
 libmd0
 libmm-glib0
@@ -482,12 +494,14 @@ libnghttp2-14
 libnice10
 libnl-3-200
 libnl-genl-3-200
+libnl-route-3-200
 libnm0
 libnma-common
 libnma-gtk4-0
 libnma0
 libnotify4
 libnpth0t64
+libnsl2
 libnspr4
 libnss3
 libntfs-3g89t64
@@ -512,6 +526,7 @@ libparted-fs-resize0t64
 libparted2t64
 libpcre2-8-0
 libpcre3
+libpcsclite1
 libpeas-1.0-0
 libpeas-common
 libperl5.38t64
@@ -688,6 +703,7 @@ libxklavier16
 libxml2
 libxmlb2
 libxmu6
+libxmuu1
 libxpm4
 libxrandr2
 libxrender1
@@ -704,6 +720,7 @@ libzstd1
 linux-base
 linux-firmware
 linux-libc-dev
+locales
 login
 logsave
 lsb-base
@@ -712,6 +729,7 @@ lshw
 lto-disabled-list
 m4
 make
+mawk
 media-types
 mesa-libgallium
 mount
@@ -859,8 +877,10 @@ wget
 whiptail
 wireless-regdb
 wireplumber
+wpasupplicant
 x11-common
 x11-xkb-utils
+x11-xserver-utils
 xdg-dbus-proxy
 xdg-desktop-portal
 xdg-desktop-portal-gnome
