@@ -45,6 +45,7 @@ i2c-tools
 initramfs-tools
 iputils-ping
 isc-dhcp-client
+isc-dhcp-server
 iw
 less
 libc6-arm64-cross

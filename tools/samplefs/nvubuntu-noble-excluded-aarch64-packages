@@ -65,7 +65,6 @@ im-config
 iperf3
 ipp-usb
 iptables
-isc-dhcp-server
 jq
 kerneloops
 kexec-tools

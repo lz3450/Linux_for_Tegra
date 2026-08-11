@@ -204,6 +204,7 @@ initramfs-tools-core
 iproute2
 iputils-ping
 isc-dhcp-client
+isc-dhcp-server
 iso-codes
 iw
 kbd
