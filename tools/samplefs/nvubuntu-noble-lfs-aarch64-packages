@@ -3,6 +3,7 @@ bash-completion
 bison
 bridge-utils
 build-essential
+ca-certificates
 curl
 debconf-utils
 device-tree-compiler
@@ -47,6 +48,8 @@ iputils-ping
 isc-dhcp-client
 isc-dhcp-server
 iw
+language-pack-en
+language-selector-gnome
 less
 libc6-arm64-cross
 libgstreamer-plugins-bad1.0-0
@@ -54,11 +57,11 @@ libnsl2
 libpcre3
 libseat1
 linux-firmware
-locales
 login
 lshw
 mawk
 mtd-utils
+nano
 nautilus-extension-gnome-terminal
 nautilus-sendto
 net-tools

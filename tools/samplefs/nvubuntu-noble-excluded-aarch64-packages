@@ -68,7 +68,6 @@ iptables
 jq
 kerneloops
 kexec-tools
-language-pack-en
 ldap-utils
 libasound2-dev
 libauthen-sasl-perl

@@ -1,10 +1,9 @@
+ca-certificates
 fdisk
 file
 fonts-ubuntu
 gdm3
+language-selector-gnome
 libgstreamer-plugins-bad1.0-0
-locales
-ubuntu-session
 ubuntu-settings
-ubuntu-wallpapers
 wpasupplicant

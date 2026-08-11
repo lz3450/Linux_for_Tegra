@@ -22,6 +22,7 @@ build-essential
 busybox-initramfs
 busybox-static
 bzip2
+ca-certificates
 console-setup
 console-setup-linux
 coreutils
@@ -212,7 +213,10 @@ keyboard-configuration
 keyboxd
 klibc-utils
 kmod
+language-pack-en
+language-pack-en-base
 language-selector-common
+language-selector-gnome
 laptop-detect
 less
 libaa1
@@ -737,6 +741,7 @@ mount
 mtd-utils
 mutter-common
 mutter-common-bin
+nano
 nautilus-extension-gnome-terminal
 nautilus-sendto
 ncurses-base
@@ -756,6 +761,7 @@ oem-config-gtk
 openssh-client
 openssh-server
 openssh-sftp-server
+openssl
 os-prober
 p11-kit
 p11-kit-modules

@@ -1554,6 +1554,7 @@ mtd-utils
 mutter-common
 mutter-common-bin
 mysql-common
+nano
 nautilus
 nautilus-data
 nautilus-extension-gnome-terminal
