@@ -3,7 +3,12 @@ fdisk
 file
 fonts-ubuntu
 gdm3
-language-selector-gnome
+gnome-control-center
+gnome-shell-extension-appindicator
+gnome-shell-extension-desktop-icons-ng
+gnome-shell-extension-ubuntu-dock
+gnome-shell-extension-ubuntu-tiling-assistant
 libgstreamer-plugins-bad1.0-0
 ubuntu-settings
 wpasupplicant
+ubuntu-keyring

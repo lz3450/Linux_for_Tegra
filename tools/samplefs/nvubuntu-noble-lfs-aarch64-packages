@@ -28,6 +28,7 @@ gdm3
 gir1.2-appindicator3-0.1
 git
 gnome-bluetooth-sendto
+gnome-control-center
 gnome-control-center-faces
 gnome-disk-utility
 gnome-initial-setup
@@ -36,6 +37,10 @@ gnome-logs
 gnome-power-manager
 gnome-remote-desktop
 gnome-screenshot
+gnome-shell-extension-appindicator
+gnome-shell-extension-desktop-icons-ng
+gnome-shell-extension-ubuntu-dock
+gnome-shell-extension-ubuntu-tiling-assistant
 gnome-system-monitor
 gnome-text-editor
 grep
@@ -49,7 +54,6 @@ isc-dhcp-client
 isc-dhcp-server
 iw
 language-pack-en
-language-selector-gnome
 less
 libc6-arm64-cross
 libgstreamer-plugins-bad1.0-0
@@ -85,6 +89,7 @@ systemd-resolved
 systemd-timesyncd
 ubiquity-frontend-debconf
 ubiquity-ubuntu-artwork
+ubuntu-keyring
 ubuntu-settings
 util-linux
 util-linux-extra
