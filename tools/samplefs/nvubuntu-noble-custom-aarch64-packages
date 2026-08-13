@@ -91,6 +91,7 @@ fonts-noto-core
 fonts-noto-mono
 fonts-ubuntu
 fuse3
+fwupd
 g++
 g++-13
 g++-13-aarch64-linux-gnu
@@ -369,6 +370,7 @@ libfdt1
 libffi8
 libfido2-1
 libflac12t64
+libflashrom1
 libfontconfig1
 libfontenc1
 libfreeaptx0
@@ -376,7 +378,9 @@ libfreerdp-server3-3
 libfreerdp3-3
 libfreetype6
 libfribidi0
+libftdi1-2
 libfuse3-3
+libfwupd3
 libgbm1
 libgcc-13-dev
 libgcc-s1
@@ -489,6 +493,7 @@ libjansson4
 libjavascriptcoregtk-4.1-0
 libjavascriptcoregtk-6.0-1
 libjbig0
+libjcat1
 libjpeg-turbo8
 libjpeg8
 libjs-jquery
@@ -525,6 +530,8 @@ libmagic-mgc
 libmagic1t64
 libmalcontent-0-0
 libmanette-0.2-0
+libmbim-glib4
+libmbim-proxy
 libmd0
 libmm-glib0
 libmnl0
@@ -597,6 +604,7 @@ libpopt0
 libportal-gtk4-1
 libportal1
 libproc2-0
+libprotobuf-c1
 libproxy1v5
 libpsl5t64
 libpulse-mainloop-glib0
@@ -608,6 +616,9 @@ libpython3.12-minimal
 libpython3.12-stdlib
 libpython3.12t64
 libqhull-r8.0
+libqmi-glib5
+libqmi-proxy
+libqrtr-glib0
 libraqm0
 libraw1394-11
 libreadline8t64
