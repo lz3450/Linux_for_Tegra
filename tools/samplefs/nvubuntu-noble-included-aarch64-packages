@@ -1,3 +1,4 @@
+apt
 ca-certificates
 fdisk
 file
@@ -11,4 +12,3 @@ gnome-shell-extension-ubuntu-tiling-assistant
 libgstreamer-plugins-bad1.0-0
 ubuntu-settings
 wpasupplicant
-ubuntu-keyring

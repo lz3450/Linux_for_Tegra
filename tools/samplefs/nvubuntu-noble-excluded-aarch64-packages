@@ -9,13 +9,11 @@ auditd
 baobab
 bind9-dnsutils
 bolt
-bsdutils
 can-utils
 cloud-init
 cpuset
 cracklib-runtime
 cron
-dash
 deja-dup
 dmidecode
 dns-root-data
@@ -177,7 +175,6 @@ mesa-utils
 mobile-broadband-provider-info
 modemmanager
 mousetweaks
-ncurses-bin
 netcat-openbsd
 network-manager-openvpn-gnome
 network-manager-pptp-gnome

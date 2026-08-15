@@ -18,6 +18,7 @@ appstream
 apt
 apt-config-icons
 apt-config-icons-hidpi
+apt-utils
 aptdaemon
 aptdaemon-data
 aspell
