@@ -2,6 +2,9 @@
 
 !/.gitignore
 
+!/custom_rootfs.sh
+!/custom_flash.sh
+
 !/tools
 !/tools/samplefs
 !/tools/samplefs/nvubuntu-*-aarch64-packages
